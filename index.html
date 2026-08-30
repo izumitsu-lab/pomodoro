@@ -3,10 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
   <title>Flip Pomodoro</title>
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flip Pomodoro">
+
   <style>
     /* 全体のリセットと背景設定 */
     * {
@@ -244,7 +249,6 @@
       .timer-container {
         flex-direction: column; 
         gap: 2vh; 
-        /* 縦画面時は時計を少し上に持ち上げてバランスを取る */
         transform: translateY(-5vh); 
       }
       .flip-unit {
@@ -255,7 +259,6 @@
       }
       
       .bottom-bar {
-        /* 横画面の右寄せを解除し、中央揃えに変更 */
         justify-content: center;
         bottom: calc(env(safe-area-inset-bottom, 20px) + 5vh);
       }
@@ -267,7 +270,6 @@
         gap: 10vw; 
       }
       
-      /* 縦画面では設定トグル群を完全に隠し、究極のシンプルさを保つ */
       .toggles {
         display: none;
       }
@@ -307,7 +309,7 @@
     let isRunning = false;
     let currentMode = 'focus';
     
-    // デフォルト設定 (SOUND OFF, FLIP ON)
+    // デフォルト設定
     let isFlipEnabled = true; 
     let isSoundEnabled = false; 
     
@@ -405,92 +407,4 @@
 
       if (forceUpdate || !isFlipEnabled) {
         ['min-unit', 'sec-unit'].forEach(id => {
-          const val = id === 'min-unit' ? m : s;
-          const unit = document.getElementById(id);
-          
-          unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
-          unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
-        });
-      } else {
-        flip('min-unit', m);
-        flip('sec-unit', s);
-      }
-    }
-
-    function toggleTimer() {
-      initAudio();
-
-      if (isRunning) {
-        clearInterval(timerInterval);
-        isRunning = false;
-        bodyEl.classList.add('paused');
-      } else {
-        isRunning = true;
-        bodyEl.classList.remove('paused');
-        
-        timerInterval = setInterval(() => {
-          timeLeft--;
-          updateDisplay();
-
-          if (timeLeft <= 0) {
-            playElegantChime(); 
-            const nextMode = currentMode === 'focus' ? 'break' : 'focus';
-            setMode(nextMode);
-          }
-        }, 1000);
-      }
-    }
-
-    function setMode(mode, event) {
-      if (event) event.stopPropagation();
-
-      clearInterval(timerInterval);
-      isRunning = false;
-      bodyEl.classList.add('paused');
-      
-      currentMode = mode;
-      timeLeft = mode === 'focus' ? TIME_FOCUS : TIME_BREAK;
-      
-      btnFocus.classList.toggle('active', mode === 'focus');
-      btnBreak.classList.toggle('active', mode === 'break');
-      
-      updateDisplay(true);
-    }
-
-    function toggleFlip(event) {
-      if (event) event.stopPropagation();
-      isFlipEnabled = !isFlipEnabled;
-      
-      btnFlip.textContent = isFlipEnabled ? "FLIP: ON" : "FLIP: OFF";
-      btnFlip.classList.add('flash');
-      
-      clearTimeout(flipTimeoutId);
-      flipTimeoutId = setTimeout(() => {
-        btnFlip.classList.remove('flash');
-        btnFlip.textContent = "FLIP";
-      }, 1500);
-    }
-
-    function toggleSound(event) {
-      if (event) event.stopPropagation();
-      isSoundEnabled = !isSoundEnabled;
-      
-      btnSound.textContent = isSoundEnabled ? "SOUND: ON" : "SOUND: OFF";
-      btnSound.classList.add('flash');
-      
-      clearTimeout(soundTimeoutId);
-      soundTimeoutId = setTimeout(() => {
-        btnSound.classList.remove('flash');
-        btnSound.textContent = "SOUND";
-      }, 1500);
-      
-      if(isSoundEnabled) {
-        initAudio();
-        playElegantChime();
-      }
-    }
-
-    updateDisplay(true);
-  </script>
-</body>
-</html>
+          const val
