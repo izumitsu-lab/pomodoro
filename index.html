@@ -29,7 +29,7 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
-    /* タイマーコンテナ */
+    /* タイマーコンテナ（基本は横並び） */
     .timer-container {
       display: flex;
       align-items: center;
@@ -37,19 +37,21 @@
       width: 100%;
       gap: 3vw; 
       transform: translateY(-3vh); 
+      transition: all 0.3s ease; /* 縦横の切り替えを少し滑らかに */
     }
 
     /* フリップユニット本体 */
     .flip-unit {
       position: relative;
       aspect-ratio: 1 / 1; 
-      width: min(42vw, 75vh); 
+      width: min(42vw, 75vh); /* 横画面時の限界サイズ */
       height: auto;
       perspective: 1200px;
       border-radius: 3cqmin; 
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
       background-color: #000;
       container-type: inline-size;
+      transition: width 0.3s ease;
     }
 
     @supports not (border-radius: 3cqmin) {
@@ -223,6 +225,30 @@
     .flip-toggle.flash {
       color: #aaaaaa; 
     }
+
+    /* =========================================
+       📱 スマホ縦画面（ポートレート）用の上書き設定
+       ========================================= */
+    @media (orientation: portrait) {
+      .timer-container {
+        flex-direction: column; /* 縦並びに変更 */
+        gap: 2vh; /* 縦の隙間 */
+        transform: translateY(-4vh); /* 縦並びの時の位置微調整 */
+      }
+      
+      .flip-unit {
+        /* 縦に2つ並ぶため、幅ではなく「画面の高さの約38%」を限界サイズに設定 */
+        width: min(85vw, 38vh); 
+      }
+      
+      .colon {
+        display: none; /* 縦並びの時はコロンを非表示にして洗練させる */
+      }
+      
+      .modes {
+        gap: 8vw; /* 縦画面だと横幅が狭いので、メニューの隙間を少し広めに */
+      }
+    }
   </style>
 </head>
 <body class="paused" id="body" onclick="toggleTimer()">
@@ -304,7 +330,7 @@
           const val = id === 'min-unit' ? m : s;
           const unit = document.getElementById(id);
           
-          // 【修正ポイント】アニメーション途中の仮カード（ゴミ）が残っていたら強制的に消す
+          // アニメーション途中の仮カード（ゴミ）が残っていたら強制的に消す
           unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
           
           unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
