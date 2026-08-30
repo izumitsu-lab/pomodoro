@@ -12,6 +12,7 @@
       padding: 0;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     
     body {
@@ -229,7 +230,6 @@
       text-align: center;
     }
 
-    /* タップした時だけ明るく光る */
     .setting-toggle.flash {
       color: #e0e0e0; 
     }
@@ -241,10 +241,12 @@
       .timer-container {
         flex-direction: column; 
         gap: 2vh; 
-        transform: translateY(-6vh); 
+        /* 修正点：メニューに干渉しないように、時計全体をさらに上に引き上げる */
+        transform: translateY(-8vh); 
       }
       .flip-unit {
-        width: min(85vw, 38vh); 
+        /* 修正点：縦に2つ並べた時に大きすぎないよう、最大高さを抑える */
+        width: min(80vw, 30vh); 
       }
       .colon {
         display: none; 
@@ -253,8 +255,9 @@
       .bottom-bar {
         flex-direction: column;
         justify-content: center;
-        gap: 3vh;
-        bottom: calc(env(safe-area-inset-bottom, 20px) + 3vh);
+        gap: 2.5vh;
+        /* 少し余裕を持って上に配置 */
+        bottom: calc(env(safe-area-inset-bottom, 20px) + 5vh);
       }
       
       .modes {
@@ -304,9 +307,9 @@
     let isRunning = false;
     let currentMode = 'focus';
     
-    // デフォルト設定
-    let isFlipEnabled = true; // デフォルトはFLIP ON
-    let isSoundEnabled = false; // デフォルトはSOUND OFF
+    // デフォルト設定 (SOUND OFF, FLIP ON)
+    let isFlipEnabled = true; 
+    let isSoundEnabled = false; 
     
     let timerInterval;
     let audioCtx; 
@@ -462,7 +465,6 @@
       btnFlip.classList.add('flash');
       
       clearTimeout(flipTimeoutId);
-      
       flipTimeoutId = setTimeout(() => {
         btnFlip.classList.remove('flash');
         btnFlip.textContent = "FLIP";
@@ -477,7 +479,6 @@
       btnSound.classList.add('flash');
       
       clearTimeout(soundTimeoutId);
-      
       soundTimeoutId = setTimeout(() => {
         btnSound.classList.remove('flash');
         btnSound.textContent = "SOUND";
