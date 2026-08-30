@@ -36,15 +36,17 @@
       justify-content: center;
       width: 100%;
       gap: 3vw; 
+      /* 下のテキストとのバランスを取るため、ほんの少しだけ上に持ち上げて「視覚的な中央」に配置 */
+      transform: translateY(-3vh); 
     }
 
     /* フリップユニット本体 */
     .flip-unit {
       position: relative;
-      /* 1:1の正方形に設定 */
+      /* 美しい正方形（1:1） */
       aspect-ratio: 1 / 1; 
       
-      /* 正方形が画面からはみ出さないように幅を再計算 */
+      /* 時計のサイズは「限界まで大きく」をキープ */
       width: min(42vw, 75vh); 
       height: auto;
       
@@ -108,7 +110,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      /* 正方形の枠に対して数字が美しく収まるサイズに調整 */
       font-size: 78cqi; 
       font-weight: 700;
       letter-spacing: -2px; 
@@ -181,9 +182,11 @@
     /* --- 下部コントロールバー --- */
     .bottom-bar {
       position: absolute;
-      bottom: env(safe-area-inset-bottom, 5vh);
+      /* iPhoneのホームバーをギリギリ避けつつ、一番下のデッドスペースに押し込む */
+      bottom: calc(env(safe-area-inset-bottom, 10px) + 5px);
       width: 100%;
-      padding: 0 calc(env(safe-area-inset-right, 5vw) + 2vw) 3vh calc(env(safe-area-inset-left, 5vw) + 2vw);
+      /* 下方向の無駄なパディングを削除 */
+      padding: 0 calc(env(safe-area-inset-right, 5vw) + 2vw) 0 calc(env(safe-area-inset-left, 5vw) + 2vw);
       display: flex;
       justify-content: flex-end;
       align-items: center;
@@ -205,7 +208,8 @@
       letter-spacing: 3px;
       color: #333333;
       transition: color 0.4s ease;
-      padding: 15px;
+      /* 縦の余白を減らし、時計との見えない衝突を回避 */
+      padding: 8px 15px; 
       cursor: pointer;
     }
 
@@ -220,7 +224,7 @@
       letter-spacing: 2px;
       color: #333333;
       transition: color 0.2s ease;
-      padding: 15px;
+      padding: 8px 15px;
       cursor: pointer;
     }
 
