@@ -20,7 +20,7 @@
       padding: 0;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
+      /* バグの原因だった touch-action: manipulation; を削除し安全性を確保 */
     }
     
     body {
@@ -249,10 +249,10 @@
       .timer-container {
         flex-direction: column; 
         gap: 2vh; 
-        transform: translateY(-5vh); 
+        transform: translateY(-8vh); 
       }
       .flip-unit {
-        width: min(80vw, 32vh); 
+        width: min(80vw, 30vh); 
       }
       .colon {
         display: none; 
@@ -276,7 +276,7 @@
     }
   </style>
 </head>
-<body class="paused" id="body" onclick="toggleTimer()">
+<body class="paused" id="body">
 
   <div class="timer-container">
     <div class="flip-unit" id="min-unit">
@@ -292,12 +292,12 @@
   
   <div class="bottom-bar">
     <div class="modes">
-      <div id="btn-focus" class="mode-btn active" onclick="setMode('focus', event)">FOCUS</div>
-      <div id="btn-break" class="mode-btn" onclick="setMode('break', event)">BREAK</div>
+      <div id="btn-focus" class="mode-btn active">FOCUS</div>
+      <div id="btn-break" class="mode-btn">BREAK</div>
     </div>
     <div class="toggles">
-      <div id="btn-sound" class="setting-toggle" onclick="toggleSound(event)">SOUND</div>
-      <div id="btn-flip" class="setting-toggle" onclick="toggleFlip(event)">FLIP</div>
+      <div id="btn-sound" class="setting-toggle">SOUND</div>
+      <div id="btn-flip" class="setting-toggle">FLIP</div>
     </div>
   </div>
 
@@ -309,7 +309,7 @@
     let isRunning = false;
     let currentMode = 'focus';
     
-    // デフォルト設定
+    // デフォルト設定 (SOUND OFF, FLIP ON)
     let isFlipEnabled = true; 
     let isSoundEnabled = false; 
     
@@ -324,56 +324,65 @@
     const btnFlip = document.getElementById('btn-flip');
     const btnSound = document.getElementById('btn-sound');
 
-    // エレガントなベルの音
+    // エレガントなベルの音（安全装置付き）
     function initAudio() {
-      if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+      try {
+        if (!audioCtx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) audioCtx = new AudioContext();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      } catch (e) {
+        console.error("Audio init error:", e);
       }
     }
 
     function playElegantChime() {
       if (!isSoundEnabled || !audioCtx) return;
+      try {
+        const t = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.value = 880; 
 
-      const t = audioCtx.currentTime;
-      const osc1 = audioCtx.createOscillator();
-      const gain1 = audioCtx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.value = 880; 
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.value = 1760; 
 
-      const osc2 = audioCtx.createOscillator();
-      const gain2 = audioCtx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.value = 1760; 
+        gain1.gain.setValueAtTime(0, t);
+        gain1.gain.linearRampToValueAtTime(0.5, t + 0.05); 
+        gain1.gain.exponentialRampToValueAtTime(0.001, t + 3); 
 
-      gain1.gain.setValueAtTime(0, t);
-      gain1.gain.linearRampToValueAtTime(0.5, t + 0.05); 
-      gain1.gain.exponentialRampToValueAtTime(0.001, t + 3); 
+        gain2.gain.setValueAtTime(0, t);
+        gain2.gain.linearRampToValueAtTime(0.15, t + 0.05);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t + 2);
 
-      gain2.gain.setValueAtTime(0, t);
-      gain2.gain.linearRampToValueAtTime(0.15, t + 0.05);
-      gain2.gain.exponentialRampToValueAtTime(0.001, t + 2);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
 
-      osc1.connect(gain1);
-      gain1.connect(audioCtx.destination);
-      osc2.connect(gain2);
-      gain2.connect(audioCtx.destination);
-
-      osc1.start(t);
-      osc1.stop(t + 3);
-      osc2.start(t);
-      osc2.stop(t + 2);
+        osc1.start(t);
+        osc1.stop(t + 3);
+        osc2.start(t);
+        osc2.stop(t + 2);
+      } catch (e) {
+        console.error("Audio play error:", e);
+      }
     }
 
     function flip(unitId, newNumber) {
       const unit = document.getElementById(unitId);
+      if (!unit) return;
       const top = unit.querySelector('.top:not(.flip-top)');
       const bottom = unit.querySelector('.bottom:not(.flip-bottom)');
-      const currentNumber = top.getAttribute('data-val');
+      if (!top || !bottom) return;
       
+      const currentNumber = top.getAttribute('data-val');
       if (currentNumber === newNumber) return;
 
       unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
@@ -407,4 +416,118 @@
 
       if (forceUpdate || !isFlipEnabled) {
         ['min-unit', 'sec-unit'].forEach(id => {
-          const val
+          const val = id === 'min-unit' ? m : s;
+          const unit = document.getElementById(id);
+          if (unit) {
+            unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
+            unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
+          }
+        });
+      } else {
+        flip('min-unit', m);
+        flip('sec-unit', s);
+      }
+    }
+
+    function toggleTimer() {
+      initAudio();
+
+      if (isRunning) {
+        clearInterval(timerInterval);
+        isRunning = false;
+        bodyEl.classList.add('paused');
+      } else {
+        isRunning = true;
+        bodyEl.classList.remove('paused');
+        
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          updateDisplay();
+
+          if (timeLeft <= 0) {
+            playElegantChime(); 
+            const nextMode = currentMode === 'focus' ? 'break' : 'focus';
+            setMode(nextMode);
+          }
+        }, 1000);
+      }
+    }
+
+    function setMode(mode) {
+      clearInterval(timerInterval);
+      isRunning = false;
+      bodyEl.classList.add('paused');
+      
+      currentMode = mode;
+      timeLeft = mode === 'focus' ? TIME_FOCUS : TIME_BREAK;
+      
+      btnFocus.classList.toggle('active', mode === 'focus');
+      btnBreak.classList.toggle('active', mode === 'break');
+      
+      updateDisplay(true);
+    }
+
+    function toggleFlip() {
+      isFlipEnabled = !isFlipEnabled;
+      
+      btnFlip.textContent = isFlipEnabled ? "FLIP: ON" : "FLIP: OFF";
+      btnFlip.classList.add('flash');
+      
+      clearTimeout(flipTimeoutId);
+      flipTimeoutId = setTimeout(() => {
+        btnFlip.classList.remove('flash');
+        btnFlip.textContent = "FLIP";
+      }, 1500);
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      
+      btnSound.textContent = isSoundEnabled ? "SOUND: ON" : "SOUND: OFF";
+      btnSound.classList.add('flash');
+      
+      clearTimeout(soundTimeoutId);
+      soundTimeoutId = setTimeout(() => {
+        btnSound.classList.remove('flash');
+        btnSound.textContent = "SOUND";
+      }, 1500);
+      
+      if(isSoundEnabled) {
+        initAudio();
+        playElegantChime();
+      }
+    }
+
+    // --- 100%確実なイベントリスナーの登録（iOSバグ対策） ---
+    btnFocus.addEventListener('click', function(e) {
+      e.stopPropagation();
+      setMode('focus');
+    });
+
+    btnBreak.addEventListener('click', function(e) {
+      e.stopPropagation();
+      setMode('break');
+    });
+
+    btnFlip.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleFlip();
+    });
+
+    btnSound.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleSound();
+    });
+
+    // 画面のどこかをタップした時にタイマーを作動させる
+    document.body.addEventListener('click', function(e) {
+      // 下部のコントロールバーをタップした時はタイマーを反応させない
+      if (e.target.closest('.bottom-bar')) return;
+      toggleTimer();
+    });
+
+    // 初期表示
+    updateDisplay(true);
+  </script>
+</body>
+</html>
