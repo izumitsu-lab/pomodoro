@@ -29,7 +29,7 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
-    /* タイマーコンテナ（基本は横並び） */
+    /* タイマーコンテナ */
     .timer-container {
       display: flex;
       align-items: center;
@@ -37,14 +37,14 @@
       width: 100%;
       gap: 3vw; 
       transform: translateY(-3vh); 
-      transition: all 0.3s ease; /* 縦横の切り替えを少し滑らかに */
+      transition: all 0.3s ease; 
     }
 
     /* フリップユニット本体 */
     .flip-unit {
       position: relative;
       aspect-ratio: 1 / 1; 
-      width: min(42vw, 75vh); /* 横画面時の限界サイズ */
+      width: min(42vw, 75vh); 
       height: auto;
       perspective: 1200px;
       border-radius: 3cqmin; 
@@ -188,7 +188,7 @@
       z-index: 20;
     }
 
-    /* モード選択（中央） */
+    /* モード選択（中央に絶対配置） */
     .modes {
       position: absolute;
       left: 50%;
@@ -211,19 +211,27 @@
       color: #999999;
     }
 
-    /* フリップトグル（右端） */
-    .flip-toggle {
+    /* 右側の設定トグル群 */
+    .toggles {
+      display: flex;
+      gap: 1vw;
+    }
+
+    .setting-toggle {
       font-size: clamp(12px, 2vh, 18px);
       font-weight: 300;
       letter-spacing: 2px;
       color: #333333;
-      transition: color 0.2s ease;
-      padding: 8px 15px;
+      transition: color 0.3s ease;
+      padding: 8px 10px;
       cursor: pointer;
+      min-width: 80px; 
+      text-align: center;
     }
 
-    .flip-toggle.flash {
-      color: #aaaaaa; 
+    /* タップした時だけ明るく光る */
+    .setting-toggle.flash {
+      color: #e0e0e0; 
     }
 
     /* =========================================
@@ -231,22 +239,34 @@
        ========================================= */
     @media (orientation: portrait) {
       .timer-container {
-        flex-direction: column; /* 縦並びに変更 */
-        gap: 2vh; /* 縦の隙間 */
-        transform: translateY(-4vh); /* 縦並びの時の位置微調整 */
+        flex-direction: column; 
+        gap: 2vh; 
+        transform: translateY(-6vh); 
       }
-      
       .flip-unit {
-        /* 縦に2つ並ぶため、幅ではなく「画面の高さの約38%」を限界サイズに設定 */
         width: min(85vw, 38vh); 
       }
-      
       .colon {
-        display: none; /* 縦並びの時はコロンを非表示にして洗練させる */
+        display: none; 
+      }
+      
+      .bottom-bar {
+        flex-direction: column;
+        justify-content: center;
+        gap: 3vh;
+        bottom: calc(env(safe-area-inset-bottom, 20px) + 3vh);
       }
       
       .modes {
-        gap: 8vw; /* 縦画面だと横幅が狭いので、メニューの隙間を少し広めに */
+        position: relative;
+        left: 0;
+        transform: none;
+        gap: 10vw; 
+      }
+      
+      .toggles {
+        position: relative;
+        gap: 6vw;
       }
     }
   </style>
@@ -270,7 +290,10 @@
       <div id="btn-focus" class="mode-btn active" onclick="setMode('focus', event)">FOCUS</div>
       <div id="btn-break" class="mode-btn" onclick="setMode('break', event)">BREAK</div>
     </div>
-    <div id="btn-flip" class="flip-toggle" onclick="toggleFlip(event)">FLIP</div>
+    <div class="toggles">
+      <div id="btn-sound" class="setting-toggle" onclick="toggleSound(event)">SOUND</div>
+      <div id="btn-flip" class="setting-toggle" onclick="toggleFlip(event)">FLIP</div>
+    </div>
   </div>
 
   <script>
@@ -280,13 +303,65 @@
     let timeLeft = TIME_FOCUS;
     let isRunning = false;
     let currentMode = 'focus';
-    let isFlipEnabled = false; 
+    
+    // デフォルト設定
+    let isFlipEnabled = true; // デフォルトはFLIP ON
+    let isSoundEnabled = false; // デフォルトはSOUND OFF
+    
     let timerInterval;
+    let audioCtx; 
+    let flipTimeoutId;
+    let soundTimeoutId;
 
     const bodyEl = document.getElementById('body');
     const btnFocus = document.getElementById('btn-focus');
     const btnBreak = document.getElementById('btn-break');
     const btnFlip = document.getElementById('btn-flip');
+    const btnSound = document.getElementById('btn-sound');
+
+    // エレガントなベルの音
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playElegantChime() {
+      if (!isSoundEnabled || !audioCtx) return;
+
+      const t = audioCtx.currentTime;
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.value = 880; 
+
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.value = 1760; 
+
+      gain1.gain.setValueAtTime(0, t);
+      gain1.gain.linearRampToValueAtTime(0.5, t + 0.05); 
+      gain1.gain.exponentialRampToValueAtTime(0.001, t + 3); 
+
+      gain2.gain.setValueAtTime(0, t);
+      gain2.gain.linearRampToValueAtTime(0.15, t + 0.05);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + 2);
+
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+
+      osc1.start(t);
+      osc1.stop(t + 3);
+      osc2.start(t);
+      osc2.stop(t + 2);
+    }
 
     function flip(unitId, newNumber) {
       const unit = document.getElementById(unitId);
@@ -330,9 +405,7 @@
           const val = id === 'min-unit' ? m : s;
           const unit = document.getElementById(id);
           
-          // アニメーション途中の仮カード（ゴミ）が残っていたら強制的に消す
           unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
-          
           unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
         });
       } else {
@@ -342,6 +415,8 @@
     }
 
     function toggleTimer() {
+      initAudio();
+
       if (isRunning) {
         clearInterval(timerInterval);
         isRunning = false;
@@ -355,6 +430,7 @@
           updateDisplay();
 
           if (timeLeft <= 0) {
+            playElegantChime(); 
             const nextMode = currentMode === 'focus' ? 'break' : 'focus';
             setMode(nextMode);
           }
@@ -382,11 +458,35 @@
       if (event) event.stopPropagation();
       isFlipEnabled = !isFlipEnabled;
       
+      btnFlip.textContent = isFlipEnabled ? "FLIP: ON" : "FLIP: OFF";
       btnFlip.classList.add('flash');
       
-      setTimeout(() => {
+      clearTimeout(flipTimeoutId);
+      
+      flipTimeoutId = setTimeout(() => {
         btnFlip.classList.remove('flash');
-      }, 300);
+        btnFlip.textContent = "FLIP";
+      }, 1500);
+    }
+
+    function toggleSound(event) {
+      if (event) event.stopPropagation();
+      isSoundEnabled = !isSoundEnabled;
+      
+      btnSound.textContent = isSoundEnabled ? "SOUND: ON" : "SOUND: OFF";
+      btnSound.classList.add('flash');
+      
+      clearTimeout(soundTimeoutId);
+      
+      soundTimeoutId = setTimeout(() => {
+        btnSound.classList.remove('flash');
+        btnSound.textContent = "SOUND";
+      }, 1500);
+      
+      if(isSoundEnabled) {
+        initAudio();
+        playElegantChime();
+      }
     }
 
     updateDisplay(true);
