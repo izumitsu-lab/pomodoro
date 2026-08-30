@@ -36,20 +36,15 @@
       justify-content: center;
       width: 100%;
       gap: 3vw; 
-      /* 下のテキストとのバランスを取るため、ほんの少しだけ上に持ち上げて「視覚的な中央」に配置 */
       transform: translateY(-3vh); 
     }
 
     /* フリップユニット本体 */
     .flip-unit {
       position: relative;
-      /* 美しい正方形（1:1） */
       aspect-ratio: 1 / 1; 
-      
-      /* 時計のサイズは「限界まで大きく」をキープ */
       width: min(42vw, 75vh); 
       height: auto;
-      
       perspective: 1200px;
       border-radius: 3cqmin; 
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
@@ -182,10 +177,8 @@
     /* --- 下部コントロールバー --- */
     .bottom-bar {
       position: absolute;
-      /* iPhoneのホームバーをギリギリ避けつつ、一番下のデッドスペースに押し込む */
       bottom: calc(env(safe-area-inset-bottom, 10px) + 5px);
       width: 100%;
-      /* 下方向の無駄なパディングを削除 */
       padding: 0 calc(env(safe-area-inset-right, 5vw) + 2vw) 0 calc(env(safe-area-inset-left, 5vw) + 2vw);
       display: flex;
       justify-content: flex-end;
@@ -208,7 +201,6 @@
       letter-spacing: 3px;
       color: #333333;
       transition: color 0.4s ease;
-      /* 縦の余白を減らし、時計との見えない衝突を回避 */
       padding: 8px 15px; 
       cursor: pointer;
     }
@@ -311,6 +303,10 @@
         ['min-unit', 'sec-unit'].forEach(id => {
           const val = id === 'min-unit' ? m : s;
           const unit = document.getElementById(id);
+          
+          // 【修正ポイント】アニメーション途中の仮カード（ゴミ）が残っていたら強制的に消す
+          unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
+          
           unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
         });
       } else {
