@@ -2,281 +2,368 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Beautiful Pomodoro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Real Flip Pomodoro - Square</title>
   <style>
-    /* 全体のリセットとベーススタイル */
+    /* 全体のリセットと背景設定 */
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
-
-    /* 背景アニメーションのキーフレーム */
-    @keyframes gradientMove {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
+    
     body {
-      /* Workモードの背景（元デザインを踏襲） */
-      background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #112d38);
-      background-size: 300% 300%;
-      animation: gradientMove 15s ease infinite;
-      
-      color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background-color: #000000;
+      color: #e0e0e0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       height: 100vh;
       width: 100vw;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       overflow: hidden;
+      cursor: pointer;
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-      
-      position: relative;
-      z-index: 0;
     }
 
-    /* Breakモードの背景（疑似要素を使ってシームレスにフェードインさせる） */
-    body::before {
-      content: "";
+    /* タイマーコンテナ */
+    .timer-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 3vw; 
+    }
+
+    /* フリップユニット本体 */
+    .flip-unit {
+      position: relative;
+      /* 1:1の正方形に設定 */
+      aspect-ratio: 1 / 1; 
+      
+      /* 正方形が画面からはみ出さないように幅を再計算 */
+      width: min(42vw, 75vh); 
+      height: auto;
+      
+      perspective: 1200px;
+      border-radius: 3cqmin; 
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      background-color: #000;
+      container-type: inline-size;
+    }
+
+    @supports not (border-radius: 3cqmin) {
+      .flip-unit { border-radius: 12px; }
+      .top { border-radius: 12px 12px 0 0; }
+      .bottom { border-radius: 0 0 12px 12px; }
+    }
+
+    /* 中央の切れ目 */
+    .flip-unit::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: max(4px, 0.8cqmin); 
+      background-color: #000000;
+      transform: translateY(-50%);
+      z-index: 10;
+    }
+
+    /* 上半分と下半分の基本スタイル */
+    .top, .bottom {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      overflow: hidden;
+      background-color: #1a1a1a;
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+
+    .top {
+      top: 0;
+      border-radius: 3cqmin 3cqmin 0 0;
+      transform-origin: bottom;
+    }
+
+    .bottom {
+      bottom: 0;
+      border-radius: 0 0 3cqmin 3cqmin;
+      transform-origin: top;
+    }
+
+    /* 数字のテキスト設定 */
+    .top::after, .bottom::after {
+      content: attr(data-val);
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 200%; 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* 正方形の枠に対して数字が美しく収まるサイズに調整 */
+      font-size: 78cqi; 
+      font-weight: 700;
+      letter-spacing: -2px; 
+      color: #f5f5f5;
+    }
+
+    @supports not (font-size: 78cqi) {
+      .top::after, .bottom::after {
+        font-size: clamp(80px, 30vw, 400px);
+      }
+    }
+
+    .top::after { top: 0; }
+    .bottom::after { bottom: 0; }
+
+    /* 立体感を出すためのグラデーションシャドウ */
+    .top::before {
+      content: '';
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
-      /* 夕暮れ時のようなリラックスできる暖色系のグラデーション */
-      background: linear-gradient(-45deg, #355C7D, #6C5B7B, #C06C84, #f67280);
-      background-size: 300% 300%;
-      animation: gradientMove 15s ease infinite;
-      opacity: 0;
-      transition: opacity 1.5s ease-in-out;
-      z-index: -1;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%);
+      z-index: 1;
     }
 
-    /* Breakモード時にBreak用背景を表示 */
-    body.break-mode::before {
+    /* --- アニメーション用要素 --- */
+    .flip-top {
+      z-index: 5;
+      animation: flipDownTop 0.25s ease-in forwards;
+    }
+
+    .flip-bottom {
+      z-index: 5;
+      transform: rotateX(90deg);
+      animation: flipDownBottom 0.25s ease-out 0.25s forwards;
+    }
+
+    @keyframes flipDownTop {
+      0% { transform: rotateX(0); filter: brightness(1); }
+      100% { transform: rotateX(-90deg); filter: brightness(0.3); }
+    }
+
+    @keyframes flipDownBottom {
+      0% { transform: rotateX(90deg); filter: brightness(0.3); }
+      100% { transform: rotateX(0); filter: brightness(1); }
+    }
+
+    /* コロン */
+    .colon {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: min(20vw, 35vh); 
+      font-weight: 700;
+      padding-bottom: 2%; 
+      color: #1a1a1a;
+      text-shadow: 0 0 10px rgba(255,255,255,0.1);
+      animation: blink 1s infinite;
+    }
+
+    .paused .colon {
+      animation: none;
       opacity: 1;
     }
 
-    /* メインコンテナ（グラスモーフィズム） */
-    .glass-container {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 30px;
-      padding: 20px 40px;
-      text-align: center;
-      box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
-      width: 85%;
-      max-width: 700px;
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.1; }
+    }
+
+    /* --- 下部コントロールバー --- */
+    .bottom-bar {
+      position: absolute;
+      bottom: env(safe-area-inset-bottom, 5vh);
+      width: 100%;
+      padding: 0 calc(env(safe-area-inset-right, 5vw) + 2vw) 3vh calc(env(safe-area-inset-left, 5vw) + 2vw);
       display: flex;
-      flex-direction: column;
-      gap: 15px;
-      transition: all 0.5s ease; /* 枠や影の変化を滑らかに */
+      justify-content: flex-end;
+      align-items: center;
+      z-index: 20;
     }
 
-    /* 残り1分を切った時の警告アニメーション（赤く脈打つ） */
-    @keyframes pulseAlert {
-      0% { box-shadow: 0 25px 45px rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); }
-      50% { box-shadow: 0 25px 50px rgba(255, 69, 58, 0.6); border-color: rgba(255, 69, 58, 0.7); }
-      100% { box-shadow: 0 25px 45px rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); }
-    }
-
-    .glass-container.urgent {
-      animation: pulseAlert 2s infinite ease-in-out;
-    }
-
-    .glass-container.urgent .timer-display {
-      color: #ffb3b0; /* タイマーの文字も少し赤みがかる */
-      text-shadow: 0 0 15px rgba(255, 69, 58, 0.5);
-    }
-
-    /* モード切替ボタン群 */
+    /* モード選択（中央） */
     .modes {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
-      justify-content: center;
-      gap: 10px;
+      gap: 4vw;
     }
 
     .mode-btn {
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: rgba(255, 255, 255, 0.6);
-      padding: 8px 24px;
-      border-radius: 20px;
-      font-size: 1rem;
-      font-weight: 500;
+      font-size: clamp(14px, 2.5vh, 24px);
+      font-weight: 300;
+      letter-spacing: 3px;
+      color: #333333;
+      transition: color 0.4s ease;
+      padding: 15px;
       cursor: pointer;
-      transition: all 0.3s ease;
     }
 
     .mode-btn.active {
-      background: rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      border-color: rgba(255, 255, 255, 0.8);
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+      color: #999999;
     }
 
-    /* タイマー表示 */
-    .timer-display {
-      font-size: 20vmin;
-      font-weight: 200;
+    /* フリップトグル（右端） */
+    .flip-toggle {
+      font-size: clamp(12px, 2vh, 18px);
+      font-weight: 300;
       letter-spacing: 2px;
-      font-variant-numeric: tabular-nums;
-      text-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-      line-height: 1;
-      margin: 10px 0;
-      transition: color 0.5s ease, text-shadow 0.5s ease;
-    }
-
-    /* コントロールボタン群 */
-    .controls {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
-
-    .control-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      color: #ffffff;
-      padding: 12px 30px;
-      border-radius: 25px;
-      font-size: 1.1rem;
-      font-weight: 600;
+      color: #333333;
+      transition: color 0.2s ease;
+      padding: 15px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      backdrop-filter: blur(5px);
-      -webkit-backdrop-filter: blur(5px);
     }
 
-    .control-btn:active {
-      transform: scale(0.95);
-      background: rgba(255, 255, 255, 0.2);
+    .flip-toggle.flash {
+      color: #aaaaaa; 
     }
-
-    #startBtn {
-      background: rgba(76, 217, 100, 0.2);
-      border: 1px solid rgba(76, 217, 100, 0.4);
-    }
-    
-    #pauseBtn {
-      background: rgba(255, 204, 0, 0.2);
-      border: 1px solid rgba(255, 204, 0, 0.4);
-    }
-
   </style>
 </head>
-<body>
+<body class="paused" id="body" onclick="toggleTimer()">
 
-  <div class="glass-container" id="glassContainer">
+  <div class="timer-container">
+    <div class="flip-unit" id="min-unit">
+      <div class="top" data-val="25"></div>
+      <div class="bottom" data-val="25"></div>
+    </div>
+    <div class="colon">:</div>
+    <div class="flip-unit" id="sec-unit">
+      <div class="top" data-val="00"></div>
+      <div class="bottom" data-val="00"></div>
+    </div>
+  </div>
+  
+  <div class="bottom-bar">
     <div class="modes">
-      <button class="mode-btn active" id="workMode" onclick="setMode('work')">Work</button>
-      <button class="mode-btn" id="breakMode" onclick="setMode('break')">Break</button>
+      <div id="btn-focus" class="mode-btn active" onclick="setMode('focus', event)">FOCUS</div>
+      <div id="btn-break" class="mode-btn" onclick="setMode('break', event)">BREAK</div>
     </div>
-    
-    <div class="timer-display" id="display">25:00</div>
-    
-    <div class="controls">
-      <button class="control-btn" id="startBtn" onclick="startTimer()">Start</button>
-      <button class="control-btn" id="pauseBtn" onclick="pauseTimer()">Pause</button>
-      <button class="control-btn" id="resetBtn" onclick="resetTimer()">Reset</button>
-    </div>
+    <div id="btn-flip" class="flip-toggle" onclick="toggleFlip(event)">FLIP</div>
   </div>
 
   <script>
-    // タイマーの設定時間（秒）
-    const WORK_TIME = 25 * 60;
-    const BREAK_TIME = 5 * 60;
+    const TIME_FOCUS = 25 * 60;
+    const TIME_BREAK = 5 * 60;
 
-    let timeLeft = WORK_TIME;
-    let timerId = null;
+    let timeLeft = TIME_FOCUS;
     let isRunning = false;
-    let currentMode = 'work';
+    let currentMode = 'focus';
+    let isFlipEnabled = false; 
+    let timerInterval;
 
-    const displayEl = document.getElementById('display');
-    const glassContainerEl = document.getElementById('glassContainer');
-    const workBtn = document.getElementById('workMode');
-    const breakBtn = document.getElementById('breakMode');
+    const bodyEl = document.getElementById('body');
+    const btnFocus = document.getElementById('btn-focus');
+    const btnBreak = document.getElementById('btn-break');
+    const btnFlip = document.getElementById('btn-flip');
 
-    // 画面の更新と色の演出
-    function updateDisplay() {
-      const minutes = Math.floor(timeLeft / 60);
-      const seconds = timeLeft % 60;
-      displayEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    function flip(unitId, newNumber) {
+      const unit = document.getElementById(unitId);
+      const top = unit.querySelector('.top:not(.flip-top)');
+      const bottom = unit.querySelector('.bottom:not(.flip-bottom)');
+      const currentNumber = top.getAttribute('data-val');
+      
+      if (currentNumber === newNumber) return;
 
-      // 【色の演出】残り1分（60秒）を切ったら警告エフェクトを追加
-      if (timeLeft <= 60 && timeLeft > 0) {
-        glassContainerEl.classList.add('urgent');
+      unit.querySelectorAll('.flip-top, .flip-bottom').forEach(el => el.remove());
+
+      const flipTop = document.createElement('div');
+      flipTop.className = 'top flip-top';
+      flipTop.setAttribute('data-val', currentNumber);
+
+      const flipBottom = document.createElement('div');
+      flipBottom.className = 'bottom flip-bottom';
+      flipBottom.setAttribute('data-val', newNumber);
+
+      unit.appendChild(flipTop);
+      unit.appendChild(flipBottom);
+
+      top.setAttribute('data-val', newNumber);
+
+      flipTop.addEventListener('animationend', () => {
+        flipTop.remove();
+      });
+
+      flipBottom.addEventListener('animationend', () => {
+        bottom.setAttribute('data-val', newNumber);
+        flipBottom.remove();
+      });
+    }
+
+    function updateDisplay(forceUpdate = false) {
+      const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+      const s = (timeLeft % 60).toString().padStart(2, '0');
+
+      if (forceUpdate || !isFlipEnabled) {
+        ['min-unit', 'sec-unit'].forEach(id => {
+          const val = id === 'min-unit' ? m : s;
+          const unit = document.getElementById(id);
+          unit.querySelectorAll('.top, .bottom').forEach(el => el.setAttribute('data-val', val));
+        });
       } else {
-        glassContainerEl.classList.remove('urgent');
+        flip('min-unit', m);
+        flip('sec-unit', s);
       }
     }
 
-    // タイマー開始
-    function startTimer() {
-      if (isRunning) return;
-      isRunning = true;
-      timerId = setInterval(() => {
-        if (timeLeft > 0) {
+    function toggleTimer() {
+      if (isRunning) {
+        clearInterval(timerInterval);
+        isRunning = false;
+        bodyEl.classList.add('paused');
+      } else {
+        isRunning = true;
+        bodyEl.classList.remove('paused');
+        
+        timerInterval = setInterval(() => {
           timeLeft--;
           updateDisplay();
-        } else {
-          // 時間切れ時の処理
-          clearInterval(timerId);
-          isRunning = false;
-          glassContainerEl.classList.remove('urgent');
-          
-          // 自動でモードを切り替える（アラート後に切り替え）
-          setTimeout(() => {
-            alert("Time's up!");
-            setMode(currentMode === 'work' ? 'break' : 'work');
-          }, 100);
-        }
-      }, 1000);
+
+          if (timeLeft <= 0) {
+            const nextMode = currentMode === 'focus' ? 'break' : 'focus';
+            setMode(nextMode);
+          }
+        }, 1000);
+      }
     }
 
-    // タイマー一時停止
-    function pauseTimer() {
-      if (!isRunning) return;
-      clearInterval(timerId);
+    function setMode(mode, event) {
+      if (event) event.stopPropagation();
+
+      clearInterval(timerInterval);
       isRunning = false;
-    }
-
-    // タイマーリセット
-    function resetTimer() {
-      pauseTimer();
-      timeLeft = currentMode === 'work' ? WORK_TIME : BREAK_TIME;
-      updateDisplay();
-    }
-
-    // モード切替（Work / Break）と背景の切り替え
-    function setMode(mode) {
-      if (currentMode === mode) return;
+      bodyEl.classList.add('paused');
       
       currentMode = mode;
-      pauseTimer();
-
-      if (mode === 'work') {
-        workBtn.classList.add('active');
-        breakBtn.classList.remove('active');
-        document.body.classList.remove('break-mode');
-        timeLeft = WORK_TIME;
-      } else {
-        breakBtn.classList.add('active');
-        workBtn.classList.remove('active');
-        document.body.classList.add('break-mode');
-        timeLeft = BREAK_TIME;
-      }
-      updateDisplay();
+      timeLeft = mode === 'focus' ? TIME_FOCUS : TIME_BREAK;
+      
+      btnFocus.classList.toggle('active', mode === 'focus');
+      btnBreak.classList.toggle('active', mode === 'break');
+      
+      updateDisplay(true);
     }
 
-    // 初期表示のセットアップ
-    updateDisplay();
+    function toggleFlip(event) {
+      if (event) event.stopPropagation();
+      isFlipEnabled = !isFlipEnabled;
+      
+      btnFlip.classList.add('flash');
+      
+      setTimeout(() => {
+        btnFlip.classList.remove('flash');
+      }, 300);
+    }
+
+    updateDisplay(true);
   </script>
 </body>
 </html>
