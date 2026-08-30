@@ -241,22 +241,19 @@
       .timer-container {
         flex-direction: column; 
         gap: 2vh; 
-        /* 修正点：メニューに干渉しないように、時計全体をさらに上に引き上げる */
-        transform: translateY(-8vh); 
+        /* 縦画面時は時計を少し上に持ち上げてバランスを取る */
+        transform: translateY(-5vh); 
       }
       .flip-unit {
-        /* 修正点：縦に2つ並べた時に大きすぎないよう、最大高さを抑える */
-        width: min(80vw, 30vh); 
+        width: min(80vw, 32vh); 
       }
       .colon {
         display: none; 
       }
       
       .bottom-bar {
-        flex-direction: column;
+        /* 横画面の右寄せを解除し、中央揃えに変更 */
         justify-content: center;
-        gap: 2.5vh;
-        /* 少し余裕を持って上に配置 */
         bottom: calc(env(safe-area-inset-bottom, 20px) + 5vh);
       }
       
@@ -267,9 +264,9 @@
         gap: 10vw; 
       }
       
+      /* 縦画面では設定トグル群を完全に隠し、究極のシンプルさを保つ */
       .toggles {
-        position: relative;
-        gap: 6vw;
+        display: none;
       }
     }
   </style>
